@@ -35,7 +35,7 @@ namespace Kuoste.LasZipNetStandard
         public static extern int laszip_close_reader(IntPtr pointer);
 
         [DllImport(LaszipDll, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int laszip_destroy(ref IntPtr pointer);
+        public static extern int laszip_destroy(IntPtr pointer);
 
         public LasZip()
         {
@@ -99,7 +99,7 @@ namespace Kuoste.LasZipNetStandard
         public void CloseReader()
         {
             laszip_close_reader(_pLasZipReader);
-            laszip_destroy(ref _pLasZipReader);
+            laszip_destroy(_pLasZipReader);
 
             _pLasZipReader = IntPtr.Zero;
             _pPoint = IntPtr.Zero;
