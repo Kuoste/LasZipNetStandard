@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LasZip.NetStandard\LasZipNetStandard.csproj" />
+    <ProjectReference Include="..\LasZipNetStandard\LasZipNetStandard.csproj" />
   </ItemGroup>
 
 </Project>
