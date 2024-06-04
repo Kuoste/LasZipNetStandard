@@ -157,5 +157,26 @@ namespace Kuoste.LasZipNetStandard
             get => (byte)((bitField4 >> 4) & 0b00001111);
             set => bitField4 = (byte)((bitField4 & 0b00001111) | ((value & 0b00001111) << 4));
         }
+
+        internal static LasZipPointStruct ConvertPoint(LasPoint lasPoint)
+        {
+            return new LasZipPointStruct()
+            {
+                X = (int)(lasPoint.X + 0.5),
+                Y = (int)(lasPoint.Y + 0.5),
+                Z = (int)(lasPoint.Z + 0.5),
+                Intensity = lasPoint.Intensity,
+                ReturnNumber = lasPoint.ReturnNumber,
+                NumberOfReturns = lasPoint.NumberOfReturns,
+                ScanDirectionFlag = lasPoint.ScanDirectionFlag,
+                EdgeOfFlightLine = lasPoint.EdgeOfFlightLine,
+                Classification = lasPoint.Classification,
+                ScanAngleRank = lasPoint.ScanAngleRank,
+                UserData = lasPoint.UserData,
+                PointSourceID = lasPoint.PointSourceId,
+                GpsTime = lasPoint.GpsTime,
+                Rgb = new ushort[] { lasPoint.Red, lasPoint.Green, lasPoint.Blue, 0 }
+            };
+        }
     }
 }
