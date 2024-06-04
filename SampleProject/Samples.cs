@@ -10,19 +10,14 @@ namespace SampleProject
 {
     internal static class Samples
     {
-        const string _sSampleFilename = @"..\..\..\Sotkamo.laz";
-        const string _sOutputFilename = @"..\..\..\out.laz";
-
-        //const string _sSampleFilename = @"..\..\..\out.laz";
-        //const string _sOutputFilename = @"..\..\..\out2.laz";
-
-        internal static void PrintFirstAndLastCoordinates()
+        internal static void ReadFile(string inputFilename)
         {
             LasZip lasZip = new(out string Version);
 
-            Console.Write("Found a dll with LASZip API version " + Version + Environment.NewLine + Environment.NewLine);
+            Console.Write("Found LASzip DLL " + Version + Environment.NewLine + Environment.NewLine);
+            Stopwatch sw = Stopwatch.StartNew();
 
-            lasZip.OpenReader(_sSampleFilename);
+            lasZip.OpenReader(inputFilename);
 
             LaszipHeaderStruct h = lasZip.GetReaderHeader();
 
@@ -68,24 +63,28 @@ namespace SampleProject
                     PrintPoint(p);
             }
 
+            sw.Stop();
+            Console.WriteLine($"Samples.ReadFile took {sw.Elapsed.TotalSeconds:N2} seconds.");
+
             lasZip.CloseReader();
+            lasZip.DestroyReader();
         }
 
-        internal static void ElevateCoordinates(int iElevateByMeters)
+        internal static void ElevateCoordinates(string inputFilename, string outputFilename, int iElevateByMeters)
         {
             Console.WriteLine();
             Console.WriteLine("Samples.ElevateCoordinates:");
-            Console.WriteLine($"Elevating points by {iElevateByMeters} meters and writing result to {Path.GetFullPath(_sOutputFilename)}");
+            Console.WriteLine($"Elevating points by {iElevateByMeters} meters and writing result to {Path.GetFullPath(outputFilename)}");
             Stopwatch sw = Stopwatch.StartNew();
 
             LasZip lasZip = new(out _);
 
-            lasZip.OpenReader(_sSampleFilename);
+            lasZip.OpenReader(inputFilename);
 
             LaszipHeaderStruct h = lasZip.GetReaderHeader();
             lasZip.SetWriterHeader(h);
 
-            lasZip.OpenWriter(_sOutputFilename, true);
+            lasZip.OpenWriter(outputFilename, true);
 
             ulong ulPointCount = Math.Max(h.NumberOfPointRecords, h.ExtendedNumberOfPointRecords);
 
@@ -105,6 +104,9 @@ namespace SampleProject
 
             lasZip.CloseReader();
             lasZip.CloseWriter();
+
+            lasZip.DestroyReader();
+            lasZip.DestroyWriter();
         }
 
         static void PrintPoint(LasPoint p)

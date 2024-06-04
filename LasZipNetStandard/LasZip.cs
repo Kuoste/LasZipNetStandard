@@ -67,7 +67,7 @@ namespace Kuoste.LasZipNetStandard
 
             laszip_get_version(ref VersionMajor, ref VersionMinor, ref VersionRevision, ref VersionBuild);
 
-            Version = string.Format("v" + VersionMajor + '.' + VersionMinor + '.' + VersionRevision + '.' + VersionBuild);
+            Version = string.Format(VersionMajor.ToString() + "." + VersionMinor + " r" + VersionRevision + " (" + VersionBuild + ")");
 
             _headerReader = new LaszipHeaderStruct();
             _headerWriter = new LaszipHeaderStruct();
@@ -127,14 +127,17 @@ namespace Kuoste.LasZipNetStandard
 
             Marshal.StructureToPtr(header, _pHeaderWriter, false);
 
-            //_headerWriter = Marshal.PtrToStructure<LaszipHeaderStruct>(_pHeaderWriter);
-
             _headerWriter = header;
         }
 
+        /// <summary>
+        /// Reads next point from the file.
+        /// </summary>
+        /// <param name="point"> Point data is read to this reference. </param>
+        /// <exception cref="Exception"> Reading failed. </exception>
         public void ReadPoint(ref LasPoint point)
         {
-            // Get point location in LasZip library
+            // Get the memory location for the point in LasZip library
             if (_pPointReader == IntPtr.Zero)
             {
                 if (laszip_get_point_pointer(_pLasZipReader, ref _pPointReader) != 0)
@@ -158,9 +161,15 @@ namespace Kuoste.LasZipNetStandard
             point.Z = point.Z * _headerReader.ScaleFactorZ + _headerReader.OffsetZ;
         }
 
+        /// <summary>
+        /// Writes the point given as reference.
+        /// </summary>
+        /// <param name="point"> LasPoint to write. Note that the method changes the coordinates
+        /// of the point by applying the Offsets and ScaleFactors. </param>
+        /// <exception cref="Exception"> Writing failed. </exception>
         public void WritePoint(ref LasPoint point)
         {
-            // Get point location in LasZip library
+            // Get the memory location for the point in LasZip library
             if (_pPointWriter == IntPtr.Zero)
             {
                 if (laszip_get_point_pointer(_pLasZipWriter, ref _pPointWriter) != 0)
@@ -185,26 +194,43 @@ namespace Kuoste.LasZipNetStandard
 
         public void CloseReader()
         {
-            laszip_close_reader(_pLasZipReader);
-            laszip_destroy(_pLasZipReader);
+            if (laszip_close_reader(_pLasZipReader) != 0)
+            {
+                throw new Exception("Failed close reader");
+            }
+
+            _pPointReader = IntPtr.Zero; 
+        }
+
+        public void DestroyReader()
+        {
+            if (laszip_destroy(_pLasZipReader) != 0)
+            {
+                throw new Exception("Failed destroy reader");
+            }
 
             _pLasZipReader = IntPtr.Zero;
-            _pPointReader = IntPtr.Zero;
         }
 
         public void CloseWriter()
         {
-            laszip_close_writer(_pLasZipWriter);
-            laszip_destroy(_pLasZipWriter);
+            if (laszip_close_writer(_pLasZipWriter) != 0)
+            {
+                throw new Exception("Failed close writer");
+            }
 
-            _pLasZipWriter = IntPtr.Zero;
             _pPointWriter = IntPtr.Zero;
+            _pHeaderWriter = IntPtr.Zero;
         }
 
-        public void Dispose()
+        public void DestroyWriter()
         {
-            CloseReader();
-            CloseWriter();
+            if (laszip_destroy(_pLasZipWriter) != 0)
+            {
+                throw new Exception("Failed destroy writer");
+            }
+
+            _pLasZipWriter = IntPtr.Zero;
         }
     }
 }

@@ -6,18 +6,19 @@ namespace SampleProject
 {
     internal class Program
     {
-        
+        const string _sSampleFilename = @"..\..\..\Sotkamo.laz";
+        const string _sOutputFilename = @"..\..\..\out.laz";
 
         static void Main(string[] args)
         {
             Console.WriteLine("Attributions:");
             Console.WriteLine($"Sample file contains open data from NLS Finland, lisenced under https://creativecommons.org/licenses/by/4.0/deed.en");
-            Console.WriteLine($"Sample file contains point cloud data from file Q5232G1.laz. Accessed May 2023. Data is cropped for smaller file size.");
+            Console.WriteLine($"Data is from file Q5232G1.laz, accessed in May 2023. The file is cropped for a smaller size.");
             Console.WriteLine("");
 
-            Samples.PrintFirstAndLastCoordinates();
+            Samples.ReadFile(_sSampleFilename);
 
-            Samples.ElevateCoordinates(100);
+            Samples.ElevateCoordinates(_sSampleFilename, _sOutputFilename, 100);
         }
 
 
