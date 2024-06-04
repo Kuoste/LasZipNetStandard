@@ -130,18 +130,6 @@ namespace Kuoste.LasZipNetStandard
             //_headerWriter = Marshal.PtrToStructure<LaszipHeaderStruct>(_pHeaderWriter);
 
             _headerWriter = header;
-
-
-
-            //if (laszip_get_header_pointer(_pLasZipReader, ref _pHeaderWriter) != 0)
-            //{
-            //    throw new Exception("Failed to get LasZip header pointer");
-            //}
-
-            //if (laszip_set_header(_pLasZipWriter, _pHeaderWriter) != 0)
-            //{
-            //    throw new Exception("Failed to set LasZip header pointer");
-            //}
         }
 
         public void ReadPoint(ref LasPoint point)
@@ -172,35 +160,21 @@ namespace Kuoste.LasZipNetStandard
 
         public void WritePoint(ref LasPoint point)
         {
-            //// Get point location in LasZip library
-            //if (_pPointWriter == IntPtr.Zero)
-            //{
-            //    if (laszip_get_point_pointer(_pLasZipWriter, ref _pPointWriter) != 0)
-            //    {
-            //        throw new Exception("Failed to get LasZip point pointer");
-            //    }
-            //}
+            // Get point location in LasZip library
+            if (_pPointWriter == IntPtr.Zero)
+            {
+                if (laszip_get_point_pointer(_pLasZipWriter, ref _pPointWriter) != 0)
+                {
+                    throw new Exception("Failed to get LasZip point pointer");
+                }
+            }
 
-            //// Scale the coordinates and add offsets. Not using the laszip_set_coordinates in order to make things faster.
-            //point.X = (point.X - _headerWriter.OffsetX) / _headerWriter.ScaleFactorX;
-            //point.Y = (point.Y - _headerWriter.OffsetY) / _headerWriter.ScaleFactorY;
-            //point.Z = (point.Z - _headerWriter.OffsetZ) / _headerWriter.ScaleFactorZ;
+            // Scale the coordinates and add offsets. Not using the laszip_set_coordinates in order to make things faster.
+            point.X = (point.X - _headerWriter.OffsetX) / _headerWriter.ScaleFactorX;
+            point.Y = (point.Y - _headerWriter.OffsetY) / _headerWriter.ScaleFactorY;
+            point.Z = (point.Z - _headerWriter.OffsetZ) / _headerWriter.ScaleFactorZ;
 
-            //Marshal.StructureToPtr(LasZipPointStruct.ConvertPoint(point), _pPointWriter, false);
-
-            //if (laszip_set_point(_pLasZipWriter, _pPointWriter) != 0)
-            //{
-            //    throw new Exception("Failed to set LasZip point");
-            //}
-
-            //// Write point 
-            //if (laszip_write_point(_pLasZipWriter) != 0)
-            //{
-            //    throw new Exception("Failed to write LasZip point");
-            //}
-
-
-            laszip_set_point(_pLasZipWriter, _pPointReader);
+            Marshal.StructureToPtr(LasZipPointStruct.ConvertPoint(point), _pPointWriter, false);
 
             // Write point 
             if (laszip_write_point(_pLasZipWriter) != 0)

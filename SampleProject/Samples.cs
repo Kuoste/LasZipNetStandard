@@ -73,6 +73,11 @@ namespace SampleProject
 
         internal static void ElevateCoordinates(int iElevateByMeters)
         {
+            Console.WriteLine();
+            Console.WriteLine("Samples.ElevateCoordinates:");
+            Console.WriteLine($"Elevating points by {iElevateByMeters} meters and writing result to {Path.GetFullPath(_sOutputFilename)}");
+            Stopwatch sw = Stopwatch.StartNew();
+
             LasZip lasZip = new(out _);
 
             lasZip.OpenReader(_sSampleFilename);
@@ -94,6 +99,9 @@ namespace SampleProject
 
                 lasZip.WritePoint(ref p);
             }
+
+            sw.Stop();
+            Console.WriteLine($"Samples.ElevateCoordinates took {sw.Elapsed.TotalSeconds:N2} seconds.");
 
             lasZip.CloseReader();
             lasZip.CloseWriter();

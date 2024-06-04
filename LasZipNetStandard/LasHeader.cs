@@ -30,7 +30,7 @@ namespace Kuoste.LasZipNetStandard
         public ushort PointDataRecordLength;
         public uint NumberOfPointRecords;
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 5)]
-        public byte[] NumberOfPointsByReturn;
+        public uint[] NumberOfPointsByReturn;
         public double ScaleFactorX;
         public double ScaleFactorY;
         public double ScaleFactorZ;
@@ -53,5 +53,16 @@ namespace Kuoste.LasZipNetStandard
         public ulong ExtendedNumberOfPointRecords;
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 15)]
         public ulong[] ExtendedNumberOfPointsByReturn;
+
+        // optional
+        public uint UserDataInHeaderSize;
+        public IntPtr UserDataInHeader;
+
+        // optional VLRs
+        public IntPtr Vlrs;
+
+        // optional
+        public uint UserDataAfterHeaderSize;
+        public IntPtr UserDataAfterHeader;
     }
 }
