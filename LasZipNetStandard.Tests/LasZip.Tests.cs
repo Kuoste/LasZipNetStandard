@@ -27,9 +27,9 @@ namespace LasZipNetStandard.Tests
 
             ulong ulPointCount = Math.Max(h.NumberOfPointRecords, h.ExtendedNumberOfPointRecords);
 
-            Console.WriteLine("Samples.PrintFirstAndLastCoordinates:");
-            Console.WriteLine($"File contains {ulPointCount} points.");
-            Console.WriteLine("First 10 points are:");
+            //Console.WriteLine("Samples.PrintFirstAndLastCoordinates:");
+            //Console.WriteLine($"File contains {ulPointCount} points.");
+            //Console.WriteLine("First 10 points are:");
 
             LasPoint p = new();
 
