@@ -44,6 +44,37 @@ namespace Kuoste.LasZipNetStandard
             lasPoint.Green = pointStruct.Rgb[1];
             lasPoint.Blue = pointStruct.Rgb[2];
         }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as LasPoint);
+        }
+
+        public bool Equals(LasPoint? p)
+        {
+            return p != null &&
+                p.X == this.X &&
+                p.Y == this.Y &&
+                p.Z == this.Z &&
+                p.Intensity == this.Intensity &&
+                p.ReturnNumber == this.ReturnNumber &&
+                p.NumberOfReturns == this.NumberOfReturns &&
+                p.ScanDirectionFlag == this.ScanDirectionFlag &&
+                p.EdgeOfFlightLine == this.EdgeOfFlightLine &&
+                p.Classification == this.Classification &&
+                p.ScanAngleRank == this.ScanAngleRank &&
+                p.UserData == this.UserData &&
+                p.PointSourceId == this.PointSourceId &&
+                p.GpsTime == this.GpsTime &&
+                p.Red == this.Red &&
+                p.Green == this.Green &&
+                p.Blue == this.Blue;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(GpsTime, Z);
+        }
     }
 
     [StructLayout(LayoutKind.Sequential)]
