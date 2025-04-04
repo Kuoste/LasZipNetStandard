@@ -3,6 +3,9 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# Test output files
+LasZipNetStandard.Tests/out.laz
+
 # User-specific files
 *.rsuser
 *.suo
