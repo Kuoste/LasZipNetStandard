@@ -5,7 +5,11 @@ namespace Kuoste.LasZipNetStandard
 {
     public class LasZip
     {
+#if WINDOWS
         private const string _lasZipDll = "laszip64.dll";
+#elif LINUX
+        private const string _lasZipDll = "liblaszip.so";
+#endif
 
         private IntPtr _pLasZipReader;
         private IntPtr _pLasZipWriter;
