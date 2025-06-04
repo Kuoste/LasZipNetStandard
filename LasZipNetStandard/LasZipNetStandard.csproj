@@ -3,6 +3,12 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <Nullable>enable</Nullable>
+	<PackageId>LasZipNetStandard</PackageId>
+	<Version>1.0.0</Version>
+	<Authors>Kuoste</Authors>
+	<Company>Kuoste</Company>
+	<PackageDescription>.NET wrapper for the laszip package</PackageDescription>
+	<RepositoryUrl>https://github.com/Kuoste/LasZipNetStandard</RepositoryUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('WINDOWS'))">
@@ -12,15 +18,19 @@
     <DefineConstants>LINUX</DefineConstants>
   </PropertyGroup>
 
-  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('WINDOWS'))">
+  <ItemGroup>
     <None Update="laszip64.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  <Pack>true</Pack>
+	  <PackagePath>runtimes/win/native/</PackagePath>
     </None>
   </ItemGroup>
 
-  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('LINUX'))">
+  <ItemGroup>
     <None Update="liblaszip.so">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  <Pack>true</Pack>
+      <PackagePath>runtimes/linux/native/</PackagePath>
     </None>
   </ItemGroup>
 
