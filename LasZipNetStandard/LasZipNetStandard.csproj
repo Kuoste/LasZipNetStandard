@@ -4,13 +4,14 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <Nullable>enable</Nullable>
 	<PackageId>LasZipNetStandard</PackageId>
-	<Version>1.0.2</Version>
+	<Version>1.0.3</Version>
 	<Authors>Kuoste</Authors>
 	<Company>Kuoste</Company>
 	<PackageDescription>.NET wrapper for the laszip package</PackageDescription>
 	<RepositoryUrl>https://github.com/Kuoste/LasZipNetStandard</RepositoryUrl>
 	<PackageReadmeFile>README.md</PackageReadmeFile>  
 	<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+	<RootNamespace>Kuoste.LasZipNetStandard</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,7 +1,4 @@
-using Kuoste.LasZipNetStandard;
-using System.Diagnostics;
-
-namespace LasZipNetStandard.Tests
+namespace Kuoste.LasZipNetStandard.Tests
 {
     public class LasZipTests
     {
