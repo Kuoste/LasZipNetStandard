@@ -13,20 +13,13 @@
 	<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
   </PropertyGroup>
 
-  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('WINDOWS'))">
-    <DefineConstants>WINDOWS</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('LINUX'))">
-    <DefineConstants>LINUX</DefineConstants>
-  </PropertyGroup>
-
   <ItemGroup>
     <None Update="laszip64.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  <Pack>true</Pack>
 	  <PackagePath>runtimes/win/native/</PackagePath>
     </None>
-    <None Update="liblaszip.so">
+    <None Update="laszip64.so">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  <Pack>true</Pack>
       <PackagePath>runtimes/linux/native/</PackagePath>
