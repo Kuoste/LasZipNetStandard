@@ -11,6 +11,7 @@
 	<RepositoryUrl>https://github.com/Kuoste/LasZipNetStandard</RepositoryUrl>
 	<PackageReadmeFile>README.md</PackageReadmeFile>  
 	<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+	<RootNamespace>Kuoste.LasZipNetStandard</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
