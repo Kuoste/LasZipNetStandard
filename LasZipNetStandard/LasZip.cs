@@ -1,10 +1,12 @@
-﻿using System;
+using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Kuoste.LasZipNetStandard
 {
-    public class LasZip
+    public class LasZip : IDisposable
     {
+        private bool _disposed = false;
         private const string _lasZipDll = "laszip64";
 
         private IntPtr _pLasZipReader;
@@ -135,7 +137,8 @@ namespace Kuoste.LasZipNetStandard
         /// </summary>
         /// <param name="point"> Point data is read to this reference. </param>
         /// <exception cref="Exception"> Reading failed. </exception>
-        public void ReadPoint(ref LasPoint point)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe void ReadPoint(ref LasPoint point)
         {
             // Get the memory location for the point in LasZip library
             if (_pPointReader == IntPtr.Zero)
@@ -152,22 +155,18 @@ namespace Kuoste.LasZipNetStandard
                 throw new Exception("Failed to read LasZip point");
             }
 
-            // Copy point data from C++ struct to C# class
-            LasPoint.ConvertPoint(Marshal.PtrToStructure<LasZipPointStruct>(_pPointReader), ref point);
-
-            // Scale the coordinates and add offsets. Not using the laszip_get_coordinates in order to make things faster.
-            point.X = point.X * _headerReader.ScaleFactorX + _headerReader.OffsetX;
-            point.Y = point.Y * _headerReader.ScaleFactorY + _headerReader.OffsetY;
-            point.Z = point.Z * _headerReader.ScaleFactorZ + _headerReader.OffsetZ;
+            LasPoint.ConvertPoint((LasZipPointNative*)_pPointReader, ref point,
+                _headerReader.ScaleFactorX, _headerReader.ScaleFactorY, _headerReader.ScaleFactorZ,
+                _headerReader.OffsetX, _headerReader.OffsetY, _headerReader.OffsetZ);
         }
 
         /// <summary>
         /// Writes the point given as reference.
         /// </summary>
-        /// <param name="point"> LasPoint to write. Note that the method changes the coordinates
-        /// of the point by applying the Offsets and ScaleFactors. </param>
+        /// <param name="point"> LasPoint to write. The coordinates are scaled and offset
+        /// using the header values before writing. </param>
         /// <exception cref="Exception"> Writing failed. </exception>
-        public void WritePoint(ref LasPoint point)
+        public unsafe void WritePoint(ref LasPoint point)
         {
             // Get the memory location for the point in LasZip library
             if (_pPointWriter == IntPtr.Zero)
@@ -178,12 +177,9 @@ namespace Kuoste.LasZipNetStandard
                 }
             }
 
-            // Scale the coordinates and add offsets. Not using the laszip_set_coordinates in order to make things faster.
-            point.X = (point.X - _headerWriter.OffsetX) / _headerWriter.ScaleFactorX;
-            point.Y = (point.Y - _headerWriter.OffsetY) / _headerWriter.ScaleFactorY;
-            point.Z = (point.Z - _headerWriter.OffsetZ) / _headerWriter.ScaleFactorZ;
-
-            Marshal.StructureToPtr(LasZipPointStruct.ConvertPoint(point), _pPointWriter, false);
+            LasZipPointNative.WriteFromLasPoint((LasZipPointNative*)_pPointWriter, point,
+                _headerWriter.ScaleFactorX, _headerWriter.ScaleFactorY, _headerWriter.ScaleFactorZ,
+                _headerWriter.OffsetX, _headerWriter.OffsetY, _headerWriter.OffsetZ);
 
             // Write point 
             if (laszip_write_point(_pLasZipWriter) != 0)
@@ -231,6 +227,53 @@ namespace Kuoste.LasZipNetStandard
             }
 
             _pLasZipWriter = IntPtr.Zero;
+        }
+
+        /// <summary>
+        /// Releases all resources used by the LasZip instance.
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Releases the unmanaged resources and optionally releases the managed resources.
+        /// </summary>
+        /// <param name="disposing">True to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
+                return;
+
+            // Clean up unmanaged resources
+            if (_pLasZipReader != IntPtr.Zero)
+            {
+                laszip_close_reader(_pLasZipReader);
+                laszip_destroy(_pLasZipReader);
+                _pLasZipReader = IntPtr.Zero;
+                _pPointReader = IntPtr.Zero;
+            }
+
+            if (_pLasZipWriter != IntPtr.Zero)
+            {
+                laszip_close_writer(_pLasZipWriter);
+                laszip_destroy(_pLasZipWriter);
+                _pLasZipWriter = IntPtr.Zero;
+                _pPointWriter = IntPtr.Zero;
+                _pHeaderWriter = IntPtr.Zero;
+            }
+
+            _disposed = true;
+        }
+
+        /// <summary>
+        /// Finalizer to ensure unmanaged resources are released.
+        /// </summary>
+        ~LasZip()
+        {
+            Dispose(false);
         }
     }
 }
