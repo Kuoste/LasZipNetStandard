@@ -105,5 +105,67 @@ namespace Kuoste.LasZipNetStandard.Tests
             lasZip.CloseReader();
             lasZip.DestroyReader();
         }
+
+        [Fact]
+        public void OpenReaderAfterDisposeThrowsObjectDisposedException()
+        {
+            LasZip lasZip = new(out _);
+
+            lasZip.Dispose();
+
+            Assert.Throws<ObjectDisposedException>(() => lasZip.OpenReader(_sSampleFilename));
+        }
+
+        [Fact]
+        public void OpenWriterAfterDisposeThrowsObjectDisposedException()
+        {
+            LasZip lasZip = new(out _);
+
+            lasZip.Dispose();
+
+            Assert.Throws<ObjectDisposedException>(() => lasZip.OpenWriter(_sOutputFilename, true));
+        }
+
+        [Fact]
+        public void GetReaderHeaderAfterDisposeThrowsObjectDisposedException()
+        {
+            LasZip lasZip = new(out _);
+
+            lasZip.Dispose();
+
+            Assert.Throws<ObjectDisposedException>(() => lasZip.GetReaderHeader());
+        }
+
+        [Fact]
+        public void GetReaderHeaderWithoutOpenReaderThrowsInvalidOperationException()
+        {
+            LasZip lasZip = new(out _);
+
+            Assert.Throws<InvalidOperationException>(() => lasZip.GetReaderHeader());
+
+            lasZip.Dispose();
+        }
+
+        [Fact]
+        public void ReadPointWithoutOpenReaderThrowsInvalidOperationException()
+        {
+            LasZip lasZip = new(out _);
+            LasPoint point = new();
+
+            Assert.Throws<InvalidOperationException>(() => lasZip.ReadPoint(ref point));
+
+            lasZip.Dispose();
+        }
+
+        [Fact]
+        public void WritePointWithoutOpenWriterThrowsInvalidOperationException()
+        {
+            LasZip lasZip = new(out _);
+            LasPoint point = new();
+
+            Assert.Throws<InvalidOperationException>(() => lasZip.WritePoint(ref point));
+
+            lasZip.Dispose();
+        }
     }
 }

@@ -7,6 +7,8 @@ namespace Kuoste.LasZipNetStandard
     public class LasZip : IDisposable
     {
         private bool _disposed = false;
+        private bool _readerOpen;
+        private bool _writerOpen;
         private const string _lasZipDll = "laszip64";
 
         private IntPtr _pLasZipReader;
@@ -83,33 +85,44 @@ namespace Kuoste.LasZipNetStandard
 
             if (laszip_create(ref _pLasZipWriter) != 0)
             {
+                laszip_destroy(_pLasZipReader);
+                _pLasZipReader = IntPtr.Zero;
                 throw new Exception("Failed to create LasZip writer pointer");
             }
         }
 
         public bool OpenReader(string filename)
         {
+            ThrowIfDisposed();
+
             bool isCompressed = false;
             if (laszip_open_reader(_pLasZipReader, filename, ref isCompressed) != 0)
             {
                 return false;
             }
 
+            _readerOpen = true;
             return true;
         }
 
         public bool OpenWriter(string filename, bool isCompressed)
         {
+            ThrowIfDisposed();
+
             if (laszip_open_writer(_pLasZipWriter, filename, isCompressed) != 0)
             {
                 return false;
             }
 
+            _writerOpen = true;
             return true;
         }
 
         public LaszipHeaderStruct GetReaderHeader()
         {
+            ThrowIfDisposed();
+            ThrowIfReaderNotOpen();
+
             IntPtr pHeader = IntPtr.Zero;
             if (laszip_get_header_pointer(_pLasZipReader, ref pHeader) != 0)
             {
@@ -122,6 +135,8 @@ namespace Kuoste.LasZipNetStandard
 
         public void SetWriterHeader(LaszipHeaderStruct header)
         {
+            ThrowIfDisposed();
+
             if (laszip_get_header_pointer(_pLasZipWriter, ref _pHeaderWriter) != 0)
             {
                 throw new Exception("Failed to get LasZip header pointer");
@@ -140,6 +155,9 @@ namespace Kuoste.LasZipNetStandard
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe void ReadPoint(ref LasPoint point)
         {
+            ThrowIfDisposed();
+            ThrowIfReaderNotOpen();
+
             // Get the memory location for the point in LasZip library
             if (_pPointReader == IntPtr.Zero)
             {
@@ -168,6 +186,9 @@ namespace Kuoste.LasZipNetStandard
         /// <exception cref="Exception"> Writing failed. </exception>
         public unsafe void WritePoint(ref LasPoint point)
         {
+            ThrowIfDisposed();
+            ThrowIfWriterNotOpen();
+
             // Get the memory location for the point in LasZip library
             if (_pPointWriter == IntPtr.Zero)
             {
@@ -190,43 +211,82 @@ namespace Kuoste.LasZipNetStandard
 
         public void CloseReader()
         {
-            if (laszip_close_reader(_pLasZipReader) != 0)
+            ThrowIfDisposed();
+
+            if (_readerOpen && laszip_close_reader(_pLasZipReader) != 0)
             {
                 throw new Exception("Failed close reader");
             }
 
-            _pPointReader = IntPtr.Zero; 
+            _readerOpen = false;
+            _pPointReader = IntPtr.Zero;
         }
 
         public void DestroyReader()
         {
+            ThrowIfDisposed();
+
             if (laszip_destroy(_pLasZipReader) != 0)
             {
                 throw new Exception("Failed destroy reader");
             }
 
+            _readerOpen = false;
             _pLasZipReader = IntPtr.Zero;
+            _pPointReader = IntPtr.Zero;
         }
 
         public void CloseWriter()
         {
-            if (laszip_close_writer(_pLasZipWriter) != 0)
+            ThrowIfDisposed();
+
+            if (_writerOpen && laszip_close_writer(_pLasZipWriter) != 0)
             {
                 throw new Exception("Failed close writer");
             }
 
+            _writerOpen = false;
             _pPointWriter = IntPtr.Zero;
             _pHeaderWriter = IntPtr.Zero;
         }
 
         public void DestroyWriter()
         {
+            ThrowIfDisposed();
+
             if (laszip_destroy(_pLasZipWriter) != 0)
             {
                 throw new Exception("Failed destroy writer");
             }
 
+            _writerOpen = false;
             _pLasZipWriter = IntPtr.Zero;
+            _pPointWriter = IntPtr.Zero;
+            _pHeaderWriter = IntPtr.Zero;
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(LasZip));
+            }
+        }
+
+        private void ThrowIfReaderNotOpen()
+        {
+            if (!_readerOpen)
+            {
+                throw new InvalidOperationException();
+            }
+        }
+
+        private void ThrowIfWriterNotOpen()
+        {
+            if (!_writerOpen)
+            {
+                throw new InvalidOperationException();
+            }
         }
 
         /// <summary>
@@ -245,12 +305,19 @@ namespace Kuoste.LasZipNetStandard
         protected virtual void Dispose(bool disposing)
         {
             if (_disposed)
+            {
                 return;
+            }
 
             // Clean up unmanaged resources
             if (_pLasZipReader != IntPtr.Zero)
             {
-                laszip_close_reader(_pLasZipReader);
+                if (_readerOpen)
+                {
+                    laszip_close_reader(_pLasZipReader);
+                    _readerOpen = false;
+                }
+
                 laszip_destroy(_pLasZipReader);
                 _pLasZipReader = IntPtr.Zero;
                 _pPointReader = IntPtr.Zero;
@@ -258,7 +325,12 @@ namespace Kuoste.LasZipNetStandard
 
             if (_pLasZipWriter != IntPtr.Zero)
             {
-                laszip_close_writer(_pLasZipWriter);
+                if (_writerOpen)
+                {
+                    laszip_close_writer(_pLasZipWriter);
+                    _writerOpen = false;
+                }
+
                 laszip_destroy(_pLasZipWriter);
                 _pLasZipWriter = IntPtr.Zero;
                 _pPointWriter = IntPtr.Zero;
