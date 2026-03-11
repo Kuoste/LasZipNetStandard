@@ -12,6 +12,7 @@
 	<PackageReadmeFile>README.md</PackageReadmeFile>  
 	<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
 	<RootNamespace>Kuoste.LasZipNetStandard</RootNamespace>
+	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
