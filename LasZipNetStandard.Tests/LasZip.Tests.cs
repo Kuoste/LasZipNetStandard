@@ -10,6 +10,9 @@ namespace Kuoste.LasZipNetStandard.Tests
         const string _sSampleFilename = @"../../../Sotkamo.laz";
         const string _sOutputFilename = @"../../../out.laz";
 
+        private static string GetOutputFilename() =>
+            Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.laz");
+
         [Fact]
         public void ReadFile()
         {
@@ -59,6 +62,7 @@ namespace Kuoste.LasZipNetStandard.Tests
         [Fact]
         public void WriteFile()
         {
+            string outputFilename = GetOutputFilename();
             LasZip lasZip = new(out _);
 
             lasZip.OpenReader(_sSampleFilename);
@@ -66,44 +70,137 @@ namespace Kuoste.LasZipNetStandard.Tests
             LaszipHeaderStruct h = lasZip.GetReaderHeader();
             lasZip.SetWriterHeader(h);
 
-            lasZip.OpenWriter(_sOutputFilename, true);
+            lasZip.OpenWriter(outputFilename, true);
 
             ulong ulPointCount = Math.Max(h.NumberOfPointRecords, h.ExtendedNumberOfPointRecords);
-            
+
             LasPoint p = new();
 
-            Dictionary<int, LasPoint> points = new();
+            List<LasPoint> points = new();
 
             for (ulong i = 0; i < ulPointCount; i++)
             {
                 lasZip.ReadPoint(ref p);
 
-                points.Add(p.GetHashCode(), p);
+                if (i % 2 != 0)
+                {
+                    continue;
+                }
 
-                lasZip.WritePoint(ref p);
+                points.Add(p);
+
+                lasZip.WritePoint(ref p, updateInventory: true);
             }
 
             lasZip.CloseWriter();
             lasZip.DestroyWriter();
 
             lasZip.CloseReader();
-            lasZip.OpenReader(_sOutputFilename);
+            lasZip.DestroyReader();
 
-            h = lasZip.GetReaderHeader();
+            LasZip lasZip2 = new(out _);
+            lasZip2.OpenReader(outputFilename);
+
+            h = lasZip2.GetReaderHeader();
 
             ulPointCount = Math.Max(h.NumberOfPointRecords, h.ExtendedNumberOfPointRecords);
 
+            Assert.Equal(points.Count, (int)ulPointCount);
+
             for (ulong i = 0; i < ulPointCount; i++)
             {
-                lasZip.ReadPoint(ref p);
+                lasZip2.ReadPoint(ref p);
 
-                Assert.True(points.TryGetValue(p.GetHashCode(), out LasPoint? pExpected));
-
-                Assert.Equal(pExpected, p);
+                Assert.Equal(points[(int)i], p);
             }
 
-            lasZip.CloseReader();
-            lasZip.DestroyReader();
+            lasZip2.CloseReader();
+            lasZip2.DestroyReader();
+        }
+
+        [Fact]
+        public void WriteFileWithManualHeaderUpdate()
+        {
+            string outputFilename = GetOutputFilename();
+
+            LasPoint p = new();
+            List<LasPoint> points = new();
+            LaszipHeaderStruct writerHeader;
+            uint[] numberOfPointsByReturn = new uint[5];
+            ulong[] extendedNumberOfPointsByReturn = new ulong[15];
+
+            using (LasZip lasZip = new(out _))
+            {
+                lasZip.OpenReader(_sSampleFilename);
+
+                LaszipHeaderStruct h = lasZip.GetReaderHeader();
+                ulong ulPointCount = Math.Max(h.NumberOfPointRecords, h.ExtendedNumberOfPointRecords);
+
+                for (ulong i = 0; i < ulPointCount; i++)
+                {
+                    lasZip.ReadPoint(ref p);
+
+                    if (i % 2 != 0)
+                    {
+                        continue;
+                    }
+
+                    points.Add(p);
+
+                    int returnIndex = p.ReturnNumber - 1;
+                    if (returnIndex >= 0)
+                    {
+                        if (returnIndex < numberOfPointsByReturn.Length)
+                        {
+                            numberOfPointsByReturn[returnIndex]++;
+                        }
+
+                        if (returnIndex < extendedNumberOfPointsByReturn.Length)
+                        {
+                            extendedNumberOfPointsByReturn[returnIndex]++;
+                        }
+                    }
+                }
+
+                lasZip.CloseReader();
+
+                writerHeader = h;
+                writerHeader.NumberOfPointRecords = (uint)points.Count;
+                writerHeader.ExtendedNumberOfPointRecords = (ulong)points.Count;
+                writerHeader.NumberOfPointsByReturn = numberOfPointsByReturn;
+                writerHeader.ExtendedNumberOfPointsByReturn = extendedNumberOfPointsByReturn;
+
+                lasZip.SetWriterHeader(writerHeader);
+                lasZip.OpenWriter(outputFilename, true);
+
+                for (int i = 0; i < points.Count; i++)
+                {
+                    LasPoint pointToWrite = points[i];
+                    lasZip.WritePoint(ref pointToWrite);
+                }
+            }
+
+            using (LasZip lasZip2 = new(out _))
+            {
+                lasZip2.OpenReader(outputFilename);
+
+                LaszipHeaderStruct h = lasZip2.GetReaderHeader();
+
+                ulong ulPointCount = Math.Max(h.NumberOfPointRecords, h.ExtendedNumberOfPointRecords);
+
+                Assert.Equal(points.Count, (int)ulPointCount);
+
+                for (int i = 0; i < writerHeader.NumberOfPointsByReturn.Length; i++)
+                {
+                    Assert.Equal(writerHeader.NumberOfPointsByReturn[i], h.NumberOfPointsByReturn[i]);
+                }
+
+                for (ulong i = 0; i < ulPointCount; i++)
+                {
+                    lasZip2.ReadPoint(ref p);
+                    Assert.Equal(points[(int)i], p);
+                }
+            }
         }
 
         [Fact]

@@ -51,6 +51,9 @@ namespace Kuoste.LasZipNetStandard
         public static extern int laszip_write_point(IntPtr pointer);
 
         [DllImport(_lasZipDll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int laszip_update_inventory(IntPtr pointer);
+
+        [DllImport(_lasZipDll, CallingConvention = CallingConvention.Cdecl)]
         public static extern int laszip_get_point_pointer(IntPtr pointer, ref IntPtr pointPointer);
 
         [DllImport(_lasZipDll, CallingConvention = CallingConvention.Cdecl)]
@@ -133,6 +136,12 @@ namespace Kuoste.LasZipNetStandard
             return _headerReader;
         }
 
+        /// <summary>
+        /// Sets the writer header. Native pointer fields (VLRs, user data) from
+        /// the source header are written as-is so OpenWriter can use them.
+        /// They are cleared internally before close/destroy to prevent double-free.
+        /// See GitHub issue #15 for proper VLR write support.
+        /// </summary>
         public void SetWriterHeader(LaszipHeaderStruct header)
         {
             ThrowIfDisposed();
@@ -183,8 +192,9 @@ namespace Kuoste.LasZipNetStandard
         /// </summary>
         /// <param name="point"> LasPoint to write. The coordinates are scaled and offset
         /// using the header values before writing. </param>
+        /// <param name="updateInventory"> True to update the native header inventory after writing the point. </param>
         /// <exception cref="Exception"> Writing failed. </exception>
-        public unsafe void WritePoint(ref LasPoint point)
+        public unsafe void WritePoint(ref LasPoint point, bool updateInventory = false)
         {
             ThrowIfDisposed();
             ThrowIfWriterNotOpen();
@@ -206,6 +216,11 @@ namespace Kuoste.LasZipNetStandard
             if (laszip_write_point(_pLasZipWriter) != 0)
             {
                 throw new Exception("Failed to write LasZip point");
+            }
+
+            if (updateInventory && laszip_update_inventory(_pLasZipWriter) != 0)
+            {
+                throw new Exception("Failed to update LasZip inventory");
             }
         }
 
@@ -240,6 +255,8 @@ namespace Kuoste.LasZipNetStandard
         {
             ThrowIfDisposed();
 
+            ClearWriterNativePointers();
+
             if (_writerOpen && laszip_close_writer(_pLasZipWriter) != 0)
             {
                 throw new Exception("Failed close writer");
@@ -254,6 +271,8 @@ namespace Kuoste.LasZipNetStandard
         {
             ThrowIfDisposed();
 
+            ClearWriterNativePointers();
+
             if (laszip_destroy(_pLasZipWriter) != 0)
             {
                 throw new Exception("Failed destroy writer");
@@ -263,6 +282,27 @@ namespace Kuoste.LasZipNetStandard
             _pLasZipWriter = IntPtr.Zero;
             _pPointWriter = IntPtr.Zero;
             _pHeaderWriter = IntPtr.Zero;
+        }
+
+        /// <summary>
+        /// Zeros VLR and user-data pointers in the writer's native header
+        /// so the native library does not free memory owned by another object.
+        /// </summary>
+        private void ClearWriterNativePointers()
+        {
+            if (_pHeaderWriter == IntPtr.Zero)
+            {
+                return;
+            }
+
+            LaszipHeaderStruct h = Marshal.PtrToStructure<LaszipHeaderStruct>(_pHeaderWriter);
+            h.UserDataInHeaderSize = 0;
+            h.UserDataInHeader = IntPtr.Zero;
+            h.NumberOfVariableLengthRecords = 0;
+            h.Vlrs = IntPtr.Zero;
+            h.UserDataAfterHeaderSize = 0;
+            h.UserDataAfterHeader = IntPtr.Zero;
+            Marshal.StructureToPtr(h, _pHeaderWriter, false);
         }
 
         private void ThrowIfDisposed()
@@ -325,6 +365,8 @@ namespace Kuoste.LasZipNetStandard
 
             if (_pLasZipWriter != IntPtr.Zero)
             {
+                ClearWriterNativePointers();
+
                 if (_writerOpen)
                 {
                     laszip_close_writer(_pLasZipWriter);
