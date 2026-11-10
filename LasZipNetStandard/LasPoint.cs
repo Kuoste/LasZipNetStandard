@@ -43,7 +43,7 @@ namespace Kuoste.LasZipNetStandard
             lasPoint.Blue = pointStruct->Rgb[2];
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return Equals(obj as LasPoint);
         }
@@ -71,7 +71,14 @@ namespace Kuoste.LasZipNetStandard
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(GpsTime, Z);
+            unchecked
+            {
+                int hash = X.GetHashCode();
+                hash = (hash * 397) ^ Y.GetHashCode();
+                hash = (hash * 397) ^ Z.GetHashCode();
+                hash = (hash * 397) ^ GpsTime.GetHashCode();
+                return hash;
+            }
         }
     }
 }
