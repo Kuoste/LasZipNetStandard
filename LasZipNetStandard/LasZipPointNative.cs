@@ -131,12 +131,36 @@ namespace Kuoste.LasZipNetStandard
             set => bitField4 = (byte)((bitField4 & 0b00001111) | ((value & 0b00001111) << 4));
         }
 
+        /// <summary>
+        /// Rounds half away from zero like LASlib's I32_QUANTIZE. Casting alone truncates
+        /// towards zero, which would round negative values the wrong way.
+        /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException"> The scaled value does not fit into a 32-bit integer or is NaN. </exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int Quantize(double scaledValue, string axis, double coordinate)
+        {
+            // Negated check so that NaN is rejected too
+            if (!(scaledValue > int.MinValue - 0.5 && scaledValue < int.MaxValue + 0.5))
+            {
+                ThrowCoordinateOutOfRange(axis, coordinate);
+            }
+
+            return scaledValue >= 0 ? (int)(scaledValue + 0.5) : (int)(scaledValue - 0.5);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ThrowCoordinateOutOfRange(string axis, double coordinate)
+        {
+            throw new ArgumentOutOfRangeException("point", coordinate,
+                $"{axis} coordinate cannot be stored with the scale factor and offset of the writer header.");
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static unsafe void WriteFromLasPoint(LasZipPointNative* native, LasPoint point, double scaleFactorX, double scaleFactorY, double scaleFactorZ, double offsetX, double offsetY, double offsetZ)
         {
-            native->X = (int)((point.X - offsetX) / scaleFactorX + 0.5);
-            native->Y = (int)((point.Y - offsetY) / scaleFactorY + 0.5);
-            native->Z = (int)((point.Z - offsetZ) / scaleFactorZ + 0.5);
+            native->X = Quantize((point.X - offsetX) / scaleFactorX, "X", point.X);
+            native->Y = Quantize((point.Y - offsetY) / scaleFactorY, "Y", point.Y);
+            native->Z = Quantize((point.Z - offsetZ) / scaleFactorZ, "Z", point.Z);
             native->Intensity = point.Intensity;
             native->ReturnNumber = point.ReturnNumber;
             native->NumberOfReturns = point.NumberOfReturns;

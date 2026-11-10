@@ -52,6 +52,12 @@ namespace Kuoste.LasZipNetStandard
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 15)]
         public ulong[] ExtendedNumberOfPointsByReturn;
 
+        // LAS 1.5 and higher only. Present in the native struct since LASzip 3.5,
+        // so these must exist here even for older files to keep the fields below at the right offsets.
+        public double MaxGpsTime;
+        public double MinGpsTime;
+        public ushort TimeOffset;
+
         // optional
         public uint UserDataInHeaderSize;
         public IntPtr UserDataInHeader;

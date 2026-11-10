@@ -36,6 +36,9 @@ namespace Kuoste.LasZipNetStandard
         public static extern int laszip_open_writer(IntPtr pointer, string filename, bool isCompressed);
 
         [DllImport(_lasZipDll, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int laszip_get_error(IntPtr pointer, ref IntPtr error);
+
+        [DllImport(_lasZipDll, CallingConvention = CallingConvention.Cdecl)]
         public static extern int laszip_get_header_pointer(IntPtr pointer, ref IntPtr headerPointer);
 
         [DllImport(_lasZipDll, CallingConvention = CallingConvention.Cdecl)]
@@ -82,7 +85,7 @@ namespace Kuoste.LasZipNetStandard
 
             if (laszip_create(ref _pLasZipReader) != 0)
             {
-                throw new Exception("Failed to create LasZip reader pointer");
+                throw new LasZipException("Failed to create LasZip reader pointer");
             }
 
 
@@ -90,8 +93,26 @@ namespace Kuoste.LasZipNetStandard
             {
                 laszip_destroy(_pLasZipReader);
                 _pLasZipReader = IntPtr.Zero;
-                throw new Exception("Failed to create LasZip writer pointer");
+                throw new LasZipException("Failed to create LasZip writer pointer");
             }
+        }
+
+        /// <summary>
+        /// Creates an exception with the message appended by the last error reported by the native LasZip object.
+        /// </summary>
+        private static LasZipException CreateException(IntPtr pLasZip, string message)
+        {
+            IntPtr pError = IntPtr.Zero;
+            if (pLasZip != IntPtr.Zero && laszip_get_error(pLasZip, ref pError) == 0 && pError != IntPtr.Zero)
+            {
+                string? nativeError = Marshal.PtrToStringAnsi(pError);
+                if (!string.IsNullOrEmpty(nativeError))
+                {
+                    return new LasZipException(message + ": " + nativeError);
+                }
+            }
+
+            return new LasZipException(message);
         }
 
         public bool OpenReader(string filename)
@@ -105,6 +126,10 @@ namespace Kuoste.LasZipNetStandard
             }
 
             _readerOpen = true;
+
+            // ReadPoint needs the scale factors and offsets even if GetReaderHeader is never called
+            GetReaderHeader();
+
             return true;
         }
 
@@ -129,7 +154,7 @@ namespace Kuoste.LasZipNetStandard
             IntPtr pHeader = IntPtr.Zero;
             if (laszip_get_header_pointer(_pLasZipReader, ref pHeader) != 0)
             {
-                throw new Exception("Failed to get LasZip header pointer");
+                throw CreateException(_pLasZipReader, "Failed to get LasZip header pointer");
             }
 
             _headerReader = Marshal.PtrToStructure<LaszipHeaderStruct>(pHeader);
@@ -148,7 +173,7 @@ namespace Kuoste.LasZipNetStandard
 
             if (laszip_get_header_pointer(_pLasZipWriter, ref _pHeaderWriter) != 0)
             {
-                throw new Exception("Failed to get LasZip header pointer");
+                throw CreateException(_pLasZipWriter, "Failed to get LasZip header pointer");
             }
 
             Marshal.StructureToPtr(header, _pHeaderWriter, false);
@@ -160,7 +185,8 @@ namespace Kuoste.LasZipNetStandard
         /// Reads next point from the file.
         /// </summary>
         /// <param name="point"> Point data is read to this reference. </param>
-        /// <exception cref="Exception"> Reading failed. </exception>
+        /// <remarks> The given instance is overwritten, so copy the point if it needs to be stored. </remarks>
+        /// <exception cref="LasZipException"> Reading failed. </exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe void ReadPoint(ref LasPoint point)
         {
@@ -172,14 +198,14 @@ namespace Kuoste.LasZipNetStandard
             {
                 if (laszip_get_point_pointer(_pLasZipReader, ref _pPointReader) != 0)
                 {
-                    throw new Exception("Failed to get LasZip point pointer");
+                    throw CreateException(_pLasZipReader, "Failed to get LasZip point pointer");
                 }
             }
 
-            // Read new point 
+            // Read new point
             if (laszip_read_point(_pLasZipReader) != 0)
             {
-                throw new Exception("Failed to read LasZip point");
+                throw CreateException(_pLasZipReader, "Failed to read LasZip point");
             }
 
             LasPoint.ConvertPoint((LasZipPointNative*)_pPointReader, ref point,
@@ -193,7 +219,8 @@ namespace Kuoste.LasZipNetStandard
         /// <param name="point"> LasPoint to write. The coordinates are scaled and offset
         /// using the header values before writing. </param>
         /// <param name="updateInventory"> True to update the native header inventory after writing the point. </param>
-        /// <exception cref="Exception"> Writing failed. </exception>
+        /// <exception cref="ArgumentOutOfRangeException"> A coordinate does not fit the scale factor and offset of the writer header. Nothing is written. </exception>
+        /// <exception cref="LasZipException"> Writing failed. </exception>
         public unsafe void WritePoint(ref LasPoint point, bool updateInventory = false)
         {
             ThrowIfDisposed();
@@ -204,7 +231,7 @@ namespace Kuoste.LasZipNetStandard
             {
                 if (laszip_get_point_pointer(_pLasZipWriter, ref _pPointWriter) != 0)
                 {
-                    throw new Exception("Failed to get LasZip point pointer");
+                    throw CreateException(_pLasZipWriter, "Failed to get LasZip point pointer");
                 }
             }
 
@@ -215,12 +242,12 @@ namespace Kuoste.LasZipNetStandard
             // Write point 
             if (laszip_write_point(_pLasZipWriter) != 0)
             {
-                throw new Exception("Failed to write LasZip point");
+                throw CreateException(_pLasZipWriter, "Failed to write LasZip point");
             }
 
             if (updateInventory && laszip_update_inventory(_pLasZipWriter) != 0)
             {
-                throw new Exception("Failed to update LasZip inventory");
+                throw CreateException(_pLasZipWriter, "Failed to update LasZip inventory");
             }
         }
 
@@ -230,7 +257,7 @@ namespace Kuoste.LasZipNetStandard
 
             if (_readerOpen && laszip_close_reader(_pLasZipReader) != 0)
             {
-                throw new Exception("Failed close reader");
+                throw CreateException(_pLasZipReader, "Failed to close reader");
             }
 
             _readerOpen = false;
@@ -243,7 +270,7 @@ namespace Kuoste.LasZipNetStandard
 
             if (laszip_destroy(_pLasZipReader) != 0)
             {
-                throw new Exception("Failed destroy reader");
+                throw CreateException(_pLasZipReader, "Failed to destroy reader");
             }
 
             _readerOpen = false;
@@ -259,7 +286,7 @@ namespace Kuoste.LasZipNetStandard
 
             if (_writerOpen && laszip_close_writer(_pLasZipWriter) != 0)
             {
-                throw new Exception("Failed close writer");
+                throw CreateException(_pLasZipWriter, "Failed to close writer");
             }
 
             _writerOpen = false;
@@ -275,7 +302,7 @@ namespace Kuoste.LasZipNetStandard
 
             if (laszip_destroy(_pLasZipWriter) != 0)
             {
-                throw new Exception("Failed destroy writer");
+                throw CreateException(_pLasZipWriter, "Failed to destroy writer");
             }
 
             _writerOpen = false;
